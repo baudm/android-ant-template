@@ -2,10 +2,10 @@
 <project name="custom_rules">
 
     <xmlproperty file="AndroidManifest.xml" prefix="custom" collapseAttributes="true" />
-    <condition property="custom.build" value="${env.BUILD_NUMBER}" else="${custom.manifest.android:versionCode}">
+    <condition property="version.code" value="${env.BUILD_NUMBER}" else="${custom.manifest.android:versionCode}">
         <isset property="env.BUILD_NUMBER" />
     </condition>
-    <property name="custom.version" value="${custom.manifest.android:versionName}-${custom.build}" />
+    <property name="version.name" value="${custom.manifest.android:versionName}.${version.code}" />
 
     <target name="-post-compile" depends="findbugs" />
 
@@ -38,7 +38,7 @@
         <taskdef name="pmd" classname="net.sourceforge.pmd.ant.PMDTask" classpathref="pmd.classpath" />
         <taskdef name="cpd" classname="net.sourceforge.pmd.cpd.CPDTask" classpathref="pmd.classpath" />
         <pmd shortFilenames="true">
-            <sourceLanguage name="java" version="1.7" />
+            <sourceLanguage name="java" version="${java.source}" />
             <ruleset>pmd-stratpoint.xml</ruleset>
             <ruleset>rulesets/java/android.xml</ruleset>
             <formatter type="xml" toFile="${out.dir}/pmd-results.xml" />
@@ -55,23 +55,26 @@
         </cpd>
     </target>
 
-    <target name="-set-version-code">
-        <echo>Modifying Android manifest with revision: ${custom.build}</echo>
+    <target name="-set-version">
+        <echo>Modifying Android manifest with version: ${version.name}</echo>
         <replaceregexp file="AndroidManifest.xml"
             match='android:versionCode="[0-9]+"'
-            replace='android:versionCode="${custom.build}"' />
+            replace='android:versionCode="${version.code}"' />
+        <replaceregexp file="AndroidManifest.xml"
+            match='android:versionName=".*"'
+            replace='android:versionName="${version.name}"' />
     </target>
 
     <target name="-set-custom-release-files">
-        <property name="out.packaged.file" location="${out.absolute.dir}/${ant.project.name}_${custom.version}-release-unsigned.apk" />
-        <property name="out.final.file" location="${out.absolute.dir}/${ant.project.name}_${custom.version}-release.apk" />
+        <property name="out.packaged.file" location="${out.absolute.dir}/${ant.project.name}_${version.name}-release-unsigned.apk" />
+        <property name="out.final.file" location="${out.absolute.dir}/${ant.project.name}_${version.name}-release.apk" />
     </target>
-    <target name="-set-release-mode" depends="-set-version-code, -set-custom-release-files, android_rules.-set-release-mode" />
+    <target name="-set-release-mode" depends="-set-version, -set-custom-release-files, android_rules.-set-release-mode" />
 
     <target name="-set-custom-debug-files">
-        <property name="out.packaged.file" location="${out.absolute.dir}/${ant.project.name}_${custom.version}-debug-unaligned.apk" />
-        <property name="out.final.file" location="${out.absolute.dir}/${ant.project.name}_${custom.version}-debug.apk" />
+        <property name="out.packaged.file" location="${out.absolute.dir}/${ant.project.name}_${version.name}-debug-unaligned.apk" />
+        <property name="out.final.file" location="${out.absolute.dir}/${ant.project.name}_${version.name}-debug.apk" />
     </target>
-    <target name="-set-debug-files" depends="-set-version-code, -set-custom-debug-files, android_rules.-set-debug-files" />
+    <target name="-set-debug-files" depends="-set-version, -set-custom-debug-files, android_rules.-set-debug-files" />
 
 </project>
