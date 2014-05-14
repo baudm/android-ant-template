@@ -1,62 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="custom_rules">
 
+    <!-- Set version.name and version.code for this build -->
     <xmlproperty file="AndroidManifest.xml" prefix="custom" collapseAttributes="true" />
     <condition property="version.code" value="${env.BUILD_NUMBER}" else="${custom.manifest.android:versionCode}">
         <isset property="env.BUILD_NUMBER" />
     </condition>
     <property name="version.name" value="${custom.manifest.android:versionName}.${version.code}" />
 
-    <target name="-post-compile" depends="findbugs" />
-
-    <target name="-pre-findbugs">
-        <condition property="findbugs.enabled">
-            <contains string="${ant.project.invoked-targets}" substring="findbugs" />
-        </condition>
-    </target>
-
-    <target name="findbugs" depends="-pre-findbugs" if="findbugs.enabled" unless="findbugs.run">
-        <property name="findbugs.run" value="" />
-        <path id="findbugs.classpath" path="${findbugs.home}/lib/findbugs-ant.jar" />
-        <taskdef name="findbugs" classname="edu.umd.cs.findbugs.anttask.FindBugsTask" classpathref="findbugs.classpath" />
-        <findbugs home="${findbugs.home}" output="xml" outputFile="${out.dir}/findbugs-results.xml"
-                  includeFilter="findbugs-include.xml" excludeFilter="findbugs-exclude.xml" effort="max">
-            <class location="${out.dir}" />
-            <auxClasspath>
-                <pathelement location="${project.target.android.jar}" />
-                <path refid="project.all.jars.path" />
-                <fileset dir="${jar.libs.dir}" includes="*.jar" />
-            </auxClasspath>
-            <sourcePath path="${source.dir}" />
-        </findbugs>
-    </target>
-
-    <target name="pmd">
-        <path id="pmd.classpath">
-            <fileset dir="${pmd.home}" includes="lib/*.jar" />
-        </path>
-        <taskdef name="pmd" classname="net.sourceforge.pmd.ant.PMDTask" classpathref="pmd.classpath" />
-        <taskdef name="cpd" classname="net.sourceforge.pmd.cpd.CPDTask" classpathref="pmd.classpath" />
-        <pmd shortFilenames="true">
-            <sourceLanguage name="java" version="${java.source}" />
-            <ruleset>pmd-stratpoint.xml</ruleset>
-            <ruleset>rulesets/java/android.xml</ruleset>
-            <formatter type="xml" toFile="${out.dir}/pmd-results.xml" />
-            <auxclasspath>
-                <pathelement location="${project.target.android.jar}" />
-                <path refid="project.all.jars.path" />
-                <fileset dir="${jar.libs.dir}" includes="*.jar" />
-                <pathelement path="${out.classes.absolute.dir}" />
-            </auxclasspath>
-            <fileset dir="${source.dir}" includes="**/*.java" />
-        </pmd>
-        <cpd minimumTokenCount="100" outputFile="${out.dir}/cpd-results.xml" format="xml">
-            <fileset dir="${source.dir}" includes="**/*.java" />
-        </cpd>
-    </target>
+    <target name="-set-mode-check" depends="android_rules.-set-mode-check, -set-apk-filenames, -set-version" />
 
     <target name="-set-version">
-        <echo>Modifying Android manifest with version: ${version.name}</echo>
+        <echo>Modifying AndroidManifest with version: ${version.name}</echo>
         <replace file="AndroidManifest.xml">
             <replacefilter token='android:versionName="${custom.manifest.android:versionName}"'
                            value='android:versionName="${version.name}"' />
@@ -65,7 +20,7 @@
         </replace>
     </target>
 
-    <target name="-set-mode-check" depends="android_rules.-set-mode-check, -set-version">
+    <target name="-set-apk-filenames">
         <condition property="custom.tag" value="release">
             <contains string="${ant.project.invoked-targets}" substring="release" />
         </condition>
@@ -80,6 +35,64 @@
         </condition>
         <property name="out.packaged.file" location="${out.absolute.dir}/${ant.project.name}_${version.name}-${custom.tag}-${custom.suffix}.apk" />
         <property name="out.final.file" location="${out.absolute.dir}/${ant.project.name}_${version.name}-${custom.tag}.apk" />
+    </target>
+
+    <!-- FindBugs integration -->
+
+    <target name="-post-compile" depends="findbugs" />
+
+    <target name="-pre-findbugs">
+        <condition property="findbugs.enabled">
+            <contains string="${ant.project.invoked-targets}" substring="findbugs" />
+        </condition>
+    </target>
+
+    <target name="findbugs" depends="-pre-findbugs" if="findbugs.enabled" unless="findbugs.finished">
+        <property name="findbugs.finished" value="true" />
+        <path id="findbugs.classpath" path="${findbugs.home}/lib/findbugs-ant.jar" />
+        <taskdef name="findbugs" classname="edu.umd.cs.findbugs.anttask.FindBugsTask" classpathref="findbugs.classpath" />
+        <findbugs home="${findbugs.home}" output="xml" outputFile="${out.dir}/findbugs-results.xml"
+                  includeFilter="findbugs-include.xml" excludeFilter="findbugs-exclude.xml" effort="max">
+            <class location="${out.dir}" />
+            <auxClasspath>
+                <pathelement location="${project.target.android.jar}" />
+                <path refid="project.all.jars.path" />
+                <fileset dir="${jar.libs.dir}" includes="*.jar" />
+            </auxClasspath>
+            <sourcePath path="${source.dir}" />
+        </findbugs>
+    </target>
+
+    <!-- PMD integration -->
+
+    <target name="-pre-pmd">
+        <path id="pmd.classpath">
+            <fileset dir="${pmd.home}" includes="lib/*.jar" />
+        </path>
+    </target>
+
+    <target name="pmd" depends="-pre-pmd">
+        <taskdef name="pmd" classname="net.sourceforge.pmd.ant.PMDTask" classpathref="pmd.classpath" />
+        <pmd shortFilenames="true">
+            <sourceLanguage name="java" version="${java.source}" />
+            <ruleset>pmd-stratpoint.xml</ruleset>
+            <ruleset>rulesets/java/android.xml</ruleset>
+            <formatter type="xml" toFile="${out.dir}/pmd-results.xml" />
+            <auxclasspath>
+                <pathelement location="${project.target.android.jar}" />
+                <path refid="project.all.jars.path" />
+                <fileset dir="${jar.libs.dir}" includes="*.jar" />
+                <pathelement path="${out.classes.absolute.dir}" />
+            </auxclasspath>
+            <fileset dir="${source.dir}" includes="**/*.java" />
+        </pmd>
+    </target>
+
+    <target name="cpd" depends="-pre-pmd">
+        <taskdef name="cpd" classname="net.sourceforge.pmd.cpd.CPDTask" classpathref="pmd.classpath" />
+        <cpd minimumTokenCount="100" outputFile="${out.dir}/cpd-results.xml" format="xml">
+            <fileset dir="${source.dir}" includes="**/*.java" />
+        </cpd>
     </target>
 
 </project>
