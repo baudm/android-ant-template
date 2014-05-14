@@ -57,24 +57,29 @@
 
     <target name="-set-version">
         <echo>Modifying Android manifest with version: ${version.name}</echo>
-        <replaceregexp file="AndroidManifest.xml"
-            match='android:versionCode="[0-9]+"'
-            replace='android:versionCode="${version.code}"' />
-        <replaceregexp file="AndroidManifest.xml"
-            match='android:versionName=".*"'
-            replace='android:versionName="${version.name}"' />
+        <replace file="AndroidManifest.xml">
+            <replacefilter token='android:versionName="${custom.manifest.android:versionName}"'
+                           value='android:versionName="${version.name}"' />
+            <replacefilter token='android:versionCode="${custom.manifest.android:versionCode}"'
+                           value='android:versionCode="${version.code}"' />
+        </replace>
     </target>
 
-    <target name="-set-custom-release-files">
-        <property name="out.packaged.file" location="${out.absolute.dir}/${ant.project.name}_${version.name}-release-unsigned.apk" />
-        <property name="out.final.file" location="${out.absolute.dir}/${ant.project.name}_${version.name}-release.apk" />
+    <target name="-set-mode-check" depends="android_rules.-set-mode-check, -set-version">
+        <condition property="custom.tag" value="release">
+            <contains string="${ant.project.invoked-targets}" substring="release" />
+        </condition>
+        <condition property="custom.tag" value="debug">
+            <contains string="${ant.project.invoked-targets}" substring="debug" />
+        </condition>
+        <condition property="custom.tag" value="instrumented">
+            <contains string="${ant.project.invoked-targets}" substring="instrument" />
+        </condition>
+        <condition property="custom.suffix" value="unsigned" else="unaligned">
+            <contains string="${ant.project.invoked-targets}" substring="release" />
+        </condition>
+        <property name="out.packaged.file" location="${out.absolute.dir}/${ant.project.name}_${version.name}-${custom.tag}-${custom.suffix}.apk" />
+        <property name="out.final.file" location="${out.absolute.dir}/${ant.project.name}_${version.name}-${custom.tag}.apk" />
     </target>
-    <target name="-set-release-mode" depends="-set-version, -set-custom-release-files, android_rules.-set-release-mode" />
-
-    <target name="-set-custom-debug-files">
-        <property name="out.packaged.file" location="${out.absolute.dir}/${ant.project.name}_${version.name}-debug-unaligned.apk" />
-        <property name="out.final.file" location="${out.absolute.dir}/${ant.project.name}_${version.name}-debug.apk" />
-    </target>
-    <target name="-set-debug-files" depends="-set-version, -set-custom-debug-files, android_rules.-set-debug-files" />
 
 </project>
